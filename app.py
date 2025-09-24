@@ -148,6 +148,9 @@ def generate_next_chapter(campaign_history, paragraph, entity_type):
 # --- Streamlit App UI ---
 
 st.set_page_config(layout="wide", page_title="Portals")
+# Initialize files on first run
+initialize_files()
+
 
 # Initialize state
 if 'campaign' not in st.session_state:
@@ -156,9 +159,6 @@ if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'llm' not in st.session_state:
     st.session_state.llm = None
-
-# Initialize files on first run
-initialize_files()
 
 st.title("Portals: TempleOS reimagined")
 st.markdown("Consult the oracle to let divine providence guide your adventure.")
