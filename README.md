@@ -1,8 +1,9 @@
 # Portals: TempleOS reimagined
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/457598b4-8abb-464b-8d6b-9f54df64e058" />
-</p>
+
+
+https://github.com/user-attachments/assets/c2a41fae-1e62-4cd9-8822-0afaaa57e72a
+
 
 No one will repeat Terry's feat; building an entire OS to use it as a random number generator is beyond anyone's capacity in the world. But over the years something stuck with me about Terry's obsession with random numbers and matching those numbers to the content of different texts in order to "get a message from God" - essentially Terry believed that God was like a programmer, that made the world and the creations within it to entertain him. Non-entertaining creations in this cosmovision are regarded as duds, and entertaining creations are regarded as the logical evolutionary step for mankind.
 
@@ -11,6 +12,12 @@ Here Terry believed that in order to get a message from God you needed to exchan
 After some years ruminating I came to understand that the essence of Terry's fixation could be broken down into two factors: the first one is doing something that enables a measure of change in one's perception (entertainment), and the second one, was the posteriori state that emerges as a consequence of getting retroactively a message that one wholeheartedly believes to come from God and thus, on understanding force our field of judgment and perception to reorganize around the new message or "new command". In every sense of the word; what Terry Davis was doing with his temple was to open portals to navigate them.
 
 A portal thus is something that changes the possibility of motion of an object. Realistic portals however are mental, in the same sense a movie or great piece of literature can change our field of action by measure of how they realign our thoughts and "help us see" new possibilities where previously none were seen. Today with LLMs, this idea can be extended deeper into something more meaningful that's actually fun to engage in.
+
+
+
+https://github.com/user-attachments/assets/6829a00d-1074-4f4a-b2a9-e563255364ec
+
+
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/1781a53e-a3df-42d6-b285-7b582cd441c6" />
