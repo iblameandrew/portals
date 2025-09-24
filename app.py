@@ -11,7 +11,7 @@ from langchain_community.llms import Ollama
 BIBLE_FILE = "NumBible.TXT"
 CAMPAIGN_FILE = "campaign.json"
 MAX_BIBLE_LINE = 100117
-RNG_MAX = 10000000
+RNG_MAX = 1000000
 
 # --- Helper Functions ---
 
@@ -40,7 +40,11 @@ def load_campaign():
         with open(CAMPAIGN_FILE, 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        return None
+        # On first run after creation, load the initial data directly
+        initialize_files()
+        with open(CAMPAIGN_FILE, 'r') as f:
+            return json.load(f)
+
 
 def save_campaign(campaign_data):
     """Saves the campaign data to the JSON file."""
@@ -148,9 +152,9 @@ def generate_next_chapter(campaign_history, paragraph, entity_type):
 # --- Streamlit App UI ---
 
 st.set_page_config(layout="wide", page_title="Portals")
+
 # Initialize files on first run
 initialize_files()
-
 
 # Initialize state
 if 'campaign' not in st.session_state:
@@ -159,6 +163,8 @@ if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'llm' not in st.session_state:
     st.session_state.llm = None
+if 'processing' not in st.session_state:
+    st.session_state.processing = False
 
 st.title("Portals: TempleOS reimagined")
 st.markdown("Consult the oracle to let divine providence guide your adventure.")
@@ -170,64 +176,71 @@ with col1:
 
     st.subheader("1. Configure LLM Provider")
     
-    ollama_model = st.text_input("Enter Ollama model name (e.g., 'llama3'):", "llama3")
+    ollama_model = st.text_input("Enter Ollama model name (e.g., 'llama3'):", "dengcao/Qwen3-30B-A3B-Instruct-2507:latest")
     if st.button("Connect to Ollama"):
-
         try:
-
             with st.spinner(f"Connecting to Ollama model '{ollama_model}'..."):
-
                 llm_instance = Ollama(model=ollama_model)
                 llm_instance.invoke("test")
-
             st.session_state.llm = llm_instance
             st.success(f"Successfully connected to Ollama with model '{ollama_model}'.")
-
         except Exception as e:
-                st.error(f"Failed to connect to Ollama. Ensure Ollama is running and the model is downloaded. Error: {e}")
-                st.session_state.llm = None
+            st.error(f"Failed to connect to Ollama. Ensure Ollama is running and the model is downloaded. Error: {e}")
+            st.session_state.llm = None
 
     st.markdown("---")
     st.subheader("2. Generate Adventure")
 
-    if st.button("Consult the Oracle", type="primary", disabled=(st.session_state.llm is None)):
+    # This button is disabled if the LLM is not configured OR if processing is ongoing.
+    if st.button("Consult the Oracle", type="primary", disabled=(st.session_state.llm is None or st.session_state.processing)):
         st.session_state.messages = [] # Clear previous messages
-        
-        # 1. Generate Random Number
-        random_number = random.randint(0, RNG_MAX)
-        st.session_state.messages.append(f"The heavens spin... a number is chosen: **{random_number}**")
+        st.session_state.processing = True # Set flag to disable button and start processing
+        st.rerun() # Rerun to immediately reflect the disabled button state
 
-        if 0 <= random_number <= MAX_BIBLE_LINE:
-            # 2. Extract Bible Paragraph
-            paragraph = get_bible_paragraph(random_number)
-            st.session_state.messages.append(f"A verse is revealed (from line ~{random_number}):\n\n---\n*{paragraph.strip()}*")
+    # This logic block only runs if the 'processing' flag is True
+    if st.session_state.processing:
+        # The spinner provides visual feedback during the entire process
+        with st.spinner("The Oracle is interpreting the holy message... The Fates are weaving..."):
+            try:
+                # 1. Generate Random Number
+                random_number = random.randint(0, RNG_MAX)
+                st.session_state.messages.append(f"The heavens spin... a number is chosen: **{random_number}**")
 
-            # 3. Check Resonance
-            last_chapter = st.session_state.campaign['chapters'][-1]['content']
-            has_resonance, reason = check_semantic_resonance(paragraph, last_chapter)
-            st.session_state.messages.append(f"**Analysis:** {reason}")
+                if 0 <= random_number <= MAX_BIBLE_LINE:
+                    # 2. Extract Bible Paragraph
+                    paragraph = get_bible_paragraph(random_number)
+                    st.session_state.messages.append(f"A verse is revealed (from line ~{random_number}):\n\n---\n*{paragraph.strip()}*")
 
-            if has_resonance:
-                # 4. Determine Entity
-                entity = determine_fantasy_entity(paragraph)
-                st.session_state.messages.append(f"The verse inspires a new **{entity}**.")
+                    # 3. Check Resonance (LLM Call 1)
+                    last_chapter = st.session_state.campaign['chapters'][-1]['content']
+                    has_resonance, reason = check_semantic_resonance(paragraph, last_chapter)
+                    st.session_state.messages.append(f"**Analysis:** {reason}")
 
-                # 5. Generate Next Chapter
-                with st.spinner("The Fates are weaving the next chapter..."):
-                    new_chapter_content = generate_next_chapter(st.session_state.campaign, paragraph, entity)
-                    
-                    # 6. Save Progress
-                    new_chapter_num = len(st.session_state.campaign['chapters']) + 1
-                    new_chapter = {"chapter_num": new_chapter_num, "content": new_chapter_content}
-                    st.session_state.campaign['chapters'].append(new_chapter)
-                    save_campaign(st.session_state.campaign)
-                    
-                    st.session_state.messages.append("The vision is clear! Your story progresses.")
+                    if has_resonance:
+                        # 4. Determine Entity (LLM Call 2)
+                        entity = determine_fantasy_entity(paragraph)
+                        st.session_state.messages.append(f"The verse inspires a new **{entity}**.")
 
-            else:
-                st.session_state.messages.append("The heavens are silent. The verse holds no meaning for your current path. Consult the oracle again.")
-        else:
-            st.session_state.messages.append("The number is outside the sacred texts. The oracle offers no guidance. Try again.")
+                        # 5. Generate Next Chapter (LLM Call 3)
+                        new_chapter_content = generate_next_chapter(st.session_state.campaign, paragraph, entity)
+                        
+                        # 6. Save Progress
+                        new_chapter_num = len(st.session_state.campaign['chapters']) + 1
+                        new_chapter = {"chapter_num": new_chapter_num, "content": new_chapter_content}
+                        st.session_state.campaign['chapters'].append(new_chapter)
+                        save_campaign(st.session_state.campaign)
+                        
+                        st.session_state.messages.append("The vision is clear! Your story progresses.")
+
+                    else:
+                        st.session_state.messages.append("The heavens are silent. The verse holds no meaning for your current path. Consult the oracle again.")
+                else:
+                    st.session_state.messages.append("The number is outside the sacred texts. The oracle offers no guidance. Try again.")
+            
+            finally:
+                # This block is GUARANTEED to run, whether the process succeeded or failed.
+                st.session_state.processing = False # Reset the flag to re-enable the button
+                st.rerun() # Rerun to update the UI and show the final results/re-enable button.
 
     st.markdown("---")
     st.subheader("Oracle Output")
@@ -238,10 +251,9 @@ with col1:
             
 with col2:
     st.header("Campaign Chronicle")
-    print(st.session_state.campaign)
-    st.markdown(f"### {st.session_state.campaign['title']}")
-    
-    # Display chapters in reverse chronological order
-    for chapter in reversed(st.session_state.campaign['chapters']):
-        with st.expander(f"Chapter {chapter['chapter_num']}", expanded=(chapter['chapter_num'] == len(st.session_state.campaign['chapters']))):
-            st.markdown(chapter['content'])
+    if st.session_state.campaign:
+        st.markdown(f"### {st.session_state.campaign['title']}")
+        
+        for chapter in reversed(st.session_state.campaign['chapters']):
+            with st.expander(f"Chapter {chapter['chapter_num']}", expanded=(chapter['chapter_num'] == len(st.session_state.campaign['chapters']))):
+                st.markdown(chapter['content'])
