@@ -136,10 +136,10 @@ def generate_next_chapter(campaign_history, paragraph, entity_type):
     Campaign History So Far:
     {full_history}
 
-    The players have just received a divine inspiration from the following holy text:
+    The theme of the chapter is based from the following holy text:
     "{paragraph}"
 
-    This inspiration has manifested as a new "{entity_type}".
+    The new element you must introduce to the story is a: "{entity_type}".
 
     Write the next chapter of the campaign. It should be about 2-3 paragraphs long. Weave the inspiration from the holy text into the narrative. Introduce a new challenge, decision, or discovery for the player based on the new {entity_type}. End the chapter on a compelling note.
     """
