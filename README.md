@@ -53,15 +53,15 @@ Do notice though; that the LLM is simply a tool for interpretation. It improvise
 *   **Ollama**: You must have Ollama installed and running on your machine. You can download it from [ollama.ai](https://ollama.ai/).
 *   **An Ollama Model**: You need a model to power the LLM. We recommend `llama3`. You can pull it by running:
     ```sh
-    ollama pull llama3
+    e.g ollama pull qwen3:4b-instruct-2507-q4_K_M
     ```
 
 ## Setup
 
 1.  **Clone the repository:**
     ```sh
-    git clone <repository_url>
-    cd <repository_directory>
+    git clone [<repository_url>](https://github.com/iblameandrew/portals.git)
+    cd portals
     ```
 
 2.  **Install Python dependencies:**
