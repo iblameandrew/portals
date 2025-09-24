@@ -1,0 +1,6 @@
+streamlit
+python-dotenv
+ollama
+langchain-core
+langchain-community
+kerykeion
