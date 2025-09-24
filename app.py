@@ -11,7 +11,7 @@ from langchain_community.llms import Ollama
 BIBLE_FILE = "NumBible.TXT"
 CAMPAIGN_FILE = "campaign.json"
 MAX_BIBLE_LINE = 100117
-RNG_MAX = 200000
+RNG_MAX = 10000000
 
 # --- Helper Functions ---
 
