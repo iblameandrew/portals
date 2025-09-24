@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 import json
 import random
 import os
@@ -22,6 +23,19 @@ BIBLE_FILE = "NumBible.TXT"
 CAMPAIGN_FILE = "campaign.json"
 MAX_BIBLE_LINE = 100117
 RNG_MAX = 1000000
+
+def strip_think_tags(text: str) -> str:
+    """
+    Removes <think>...</think> tags and their content from a string.
+
+    Args:
+        text: The input string that may contain think tags.
+
+    Returns:
+        A new string with all think tags and their inner content removed.
+    """
+    pattern = r"<think>.*?</think>"
+    return re.sub(pattern, "", text, flags=re.DOTALL)
 
 # --- Astrological Data Functions (from astro.py) ---
 
@@ -73,16 +87,12 @@ def initialize_files():
     if not os.path.exists(BIBLE_FILE):
         st.error(f"{BIBLE_FILE} not found. Please create it with numbered lines of text.")
         st.stop()
-
+    
+    # --- MODIFICATION: Initialize campaign with an empty chapter list ---
     if not os.path.exists(CAMPAIGN_FILE):
         initial_campaign = {
             "title": "The War of the Heavens",
-            "chapters": [
-                {
-                    "chapter_num": 1,
-                    "content": "You stand on the precipice of the shattered city of Aethelburg, a celestial tear shimmering in the sky above. An angelic feather, pure white, drifts down and lands at your feet. The air crackles with a divine and infernal energy. Your quest has just begun: to seal the rift before the world is consumed by the final war between heaven and hell."
-                }
-            ]
+            "chapters": []  # Start with no chapters
         }
         with open(CAMPAIGN_FILE, 'w') as f:
             json.dump(initial_campaign, f, indent=4)
@@ -138,18 +148,19 @@ def check_semantic_resonance(paragraph, last_chapter_content):
     chain = prompt | llm | StrOutputParser()
     
     response = chain.invoke({})
+    response = strip_think_tags(response)
     st.session_state.debug_resonance = response # for debugging
     return "High Resonance" in response, response
 
 def determine_fantasy_entity(paragraph):
-    """Uses an LLM to determine what kind of fantasy entity the paragraph and chart inspire."""
+    """Uses an LLM to determine what kind of fantasy entity the paragraph inspires."""
     if 'llm' not in st.session_state or not st.session_state.llm:
         st.error("Please select and configure an LLM provider first.")
         return "Unknown"
     llm = st.session_state.llm
 
     prompt_text = f"""
-    Read the following religious text and astrological data. Based on their combined contents, what kind of Dungeons & Dragons entity do they most inspire? Choose from one of the following categories:
+    Read the following religious text. Based on its contents, what kind of entity does it most inspire? Choose from one of the following categories:
 
     - Magic Artifact 
     - New Scenario 
@@ -165,6 +176,7 @@ def determine_fantasy_entity(paragraph):
     chain = prompt | llm | StrOutputParser()
     
     response = chain.invoke({})
+    response = strip_think_tags(response)
     st.session_state.debug_entity = response # for debugging
     return response.strip()
 
@@ -176,16 +188,22 @@ def generate_next_chapter(campaign_history, paragraph, trimmed_chart, entity_typ
     llm = st.session_state.llm
         
     full_history = "\n".join([ch["content"] for ch in campaign_history["chapters"]])
+    
+    # --- MODIFICATION: Adjust prompt if history is empty ---
+    if not full_history:
+        history_prompt = "This is the very first chapter. Begin the story."
+    else:
+        history_prompt = f"Campaign History So Far:\n{full_history}"
+
 
     prompt_text = f"""
     You are a Dungeons & Dragons Dungeon Master inspired by Apophatic theology and Mundane Astrology. 
     
     Write the next chapter for a campaign about angels, demons, and the end of the world. The player can die but can be resurrected with the correct holy verse.
 
-    Omit mentioning astrological data in the chapter..
+    Omit mentioning astrological data in the chapter.
 
-    Campaign History So Far:
-    {full_history}
+    {history_prompt}
 
     Your two sources of divine inspiration for this chapter are:
 
@@ -201,14 +219,15 @@ def generate_next_chapter(campaign_history, paragraph, trimmed_chart, entity_typ
     
     Weave the inspiration from BOTH the holy text's cryptic message and the astrological chart's tensions (e.g., a Mars-Pluto square suggesting conflict, a Venus-Jupiter trine suggesting a fortunate alliance) into the narrative. Introduce a new challenge, decision, or discovery for the player based on the new {entity_type}. 
 
-    The story must be written without any references to the holy text or the astrological chart,  but regardless be inspired by it.
+    The story must be written without any references to the holy text or the astrological chart, but regardless be inspired by it.
     
     End the chapter on a compelling note.
     """
     prompt = ChatPromptTemplate.from_template(prompt_text)
     chain = prompt | llm | StrOutputParser()
-
     response = chain.invoke({})
+    response = strip_think_tags(response)
+
     return response.strip()
 
 # --- Streamlit App UI ---
@@ -238,13 +257,11 @@ with col1:
 
     st.subheader("1. Configure Oracle")
     
-    ollama_model = st.text_input("Enter Ollama model name:", "dengcao/Qwen3-30B-A3B-Instruct-2507:latest")
+    ollama_model = st.text_input("Enter Ollama model name:", "qwen3:30b-a3b-thinking-2507-q4_K_M")
     if st.button("Connect to Ollama"):
         try:
             with st.spinner(f"Connecting to Ollama model '{ollama_model}'..."):
                 llm_instance = Ollama(model=ollama_model)
-                # A quick test to see if the model is responsive
-                llm_instance.invoke("test") 
             st.session_state.llm = llm_instance
             st.success(f"Successfully connected to Ollama with model '{ollama_model}'.")
         except Exception as e:
@@ -275,10 +292,16 @@ with col1:
                     paragraph = get_bible_paragraph(random_number)
                     st.session_state.messages.append(f"A verse is revealed (from line ~{random_number}):\n\n---\n*{paragraph.strip()}*")
 
-                    # 3. Check Resonance
-                    last_chapter = st.session_state.campaign['chapters'][-1]['content']
-                    has_resonance, reason = check_semantic_resonance(paragraph, last_chapter)
-                    st.session_state.messages.append(f"**Verse Analysis:** {reason}")
+                    # --- MODIFICATION: Handle resonance check for new campaigns ---
+                    # If chapters exist, check resonance. Otherwise, skip for the first chapter.
+                    if st.session_state.campaign['chapters']:
+                        last_chapter_content = st.session_state.campaign['chapters'][-1]['content']
+                        has_resonance, reason = check_semantic_resonance(paragraph, last_chapter_content)
+                        st.session_state.messages.append(f"**Verse Analysis:** {reason}")
+                    else:
+                        has_resonance = True # Automatically true for the first chapter
+                        st.session_state.messages.append("**Verse Analysis:** Generating the first chapter. The path is new and resonance is assumed.")
+
 
                     if has_resonance:
                         # 4. Generate and Trim Astrological Chart
@@ -321,6 +344,12 @@ with col2:
     if st.session_state.campaign:
         st.markdown(f"### {st.session_state.campaign['title']}")
         
+        # Display chapters if any exist
+        if not st.session_state.campaign['chapters']:
+            st.info("Your campaign has not yet begun. Consult the Oracle to write the first chapter.")
+
         for chapter in reversed(st.session_state.campaign['chapters']):
-            with st.expander(f"Chapter {chapter['chapter_num']}", expanded=(chapter['chapter_num'] == len(st.session_state.campaign['chapters']))):
+            # The first chapter should be expanded by default
+            is_first_chapter_view = (len(st.session_state.campaign['chapters']) == 1)
+            with st.expander(f"Chapter {chapter['chapter_num']}", expanded=(chapter['chapter_num'] == len(st.session_state.campaign['chapters']) or is_first_chapter_view)):
                 st.markdown(chapter['content'])
