@@ -1,0 +1,15 @@
+**/__pycache__/
+**/.pytest_cache/
+*.pyc
+*.json
+models/
+monitors/
+datasets/
+recommenders/
+schism-2f86a-firebase-adminsdk-fbsvc-e73fa64c73/
+*.log
+*.~
+*.un~
+*.csv
+.venv/
+
