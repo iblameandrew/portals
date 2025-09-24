@@ -5,7 +5,7 @@ import os
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.chat_models import Ollama
+from langchain_community.llms import Ollama
 
 # --- Configuration ---
 BIBLE_FILE = "NumBible.TXT"
@@ -79,7 +79,7 @@ def check_semantic_resonance(paragraph, last_chapter_content):
     
     Religious Paragraph: "{paragraph}"
 
-    Does the religious paragraph semantically match the themes of the campaign (divinity, conflict, prophecy, judgment, otherworldly beings, good vs. evil)? Respond with only "High Resonance" or "Low Resonance".
+    Does the religious paragraph semantically match the themes of the chapter? Respond with only "High Resonance" or "Low Resonance".
     """
     prompt = ChatPromptTemplate.from_template(prompt_text)
     chain = prompt | llm | StrOutputParser()
@@ -137,7 +137,7 @@ def generate_next_chapter(campaign_history, paragraph, entity_type):
 
     This inspiration has manifested as a new "{entity_type}".
 
-    Write the next chapter of the campaign. It should be long. Weave the inspiration from the holy text into the narrative. Introduce a new challenge, decision, or discovery for the player based on the new {entity_type}. End the chapter on a compelling note.
+    Write the next chapter of the campaign. It should be about 2-3 paragraphs long. Weave the inspiration from the holy text into the narrative. Introduce a new challenge, decision, or discovery for the player based on the new {entity_type}. End the chapter on a compelling note.
     """
     prompt = ChatPromptTemplate.from_template(prompt_text)
     chain = prompt | llm | StrOutputParser()
@@ -147,7 +147,7 @@ def generate_next_chapter(campaign_history, paragraph, entity_type):
 
 # --- Streamlit App UI ---
 
-st.set_page_config(layout="wide", page_title="portals")
+st.set_page_config(layout="wide", page_title="Portals")
 
 # Initialize state
 if 'campaign' not in st.session_state:
@@ -170,27 +170,20 @@ with col1:
 
     st.subheader("1. Configure LLM Provider")
     
-    provider = st.selectbox("Choose your LLM provider:", ["Google Gemini", "Ollama"])
+    ollama_model = st.text_input("Enter Ollama model name (e.g., 'llama3'):", "llama3")
+    if st.button("Connect to Ollama"):
 
-    if provider == "Google Gemini":
         try:
-            st.session_state.llm = ChatGoogleGenerativeAI(model="gemini-pro")
-            st.success("Connected to Google Gemini.")
+
+            with st.spinner(f"Connecting to Ollama model '{ollama_model}'..."):
+
+                llm_instance = Ollama(model=ollama_model)
+                llm_instance.invoke("test")
+
+            st.session_state.llm = llm_instance
+            st.success(f"Successfully connected to Ollama with model '{ollama_model}'.")
+
         except Exception as e:
-            st.error(f"Failed to connect to Gemini. Ensure your GOOGLE_API_KEY is set. Error: {e}")
-            st.session_state.llm = None
-            
-    elif provider == "Ollama":
-        ollama_model = st.text_input("Enter Ollama model name (e.g., 'llama3'):", "llama3")
-        if st.button("Connect to Ollama"):
-            try:
-                # A simple invocation to check the connection
-                with st.spinner(f"Connecting to Ollama model '{ollama_model}'..."):
-                    llm_instance = Ollama(model=ollama_model)
-                    llm_instance.invoke("test")
-                st.session_state.llm = llm_instance
-                st.success(f"Successfully connected to Ollama with model '{ollama_model}'.")
-            except Exception as e:
                 st.error(f"Failed to connect to Ollama. Ensure Ollama is running and the model is downloaded. Error: {e}")
                 st.session_state.llm = None
 
@@ -245,8 +238,10 @@ with col1:
             
 with col2:
     st.header("Campaign Chronicle")
+    print(st.session_state.campaign)
     st.markdown(f"### {st.session_state.campaign['title']}")
     
+    # Display chapters in reverse chronological order
     for chapter in reversed(st.session_state.campaign['chapters']):
         with st.expander(f"Chapter {chapter['chapter_num']}", expanded=(chapter['chapter_num'] == len(st.session_state.campaign['chapters']))):
             st.markdown(chapter['content'])
